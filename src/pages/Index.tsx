@@ -11,7 +11,10 @@ import {
   Users, 
   Bitcoin,
   Calendar,
-  Lock
+  Lock,
+  Settings,
+  Share2,
+  Edit
 } from "lucide-react";
 import CryptoChart from "@/components/CryptoChart";
 import ActivityFeed from "@/components/ActivityFeed";
@@ -19,6 +22,8 @@ import InvestmentModal from "@/components/InvestmentModal";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import WithdrawalBlockModal from "@/components/WithdrawalBlockModal";
 import OnlineInvestorsCounter from "@/components/OnlineInvestorsCounter";
+import DashboardHeader from "@/components/DashboardHeader";
+import FloatingActionButton from "@/components/FloatingActionButton";
 
 const Index: React.FC = () => {
   const [balance, setBalance] = useState(0);
@@ -28,16 +33,6 @@ const Index: React.FC = () => {
   const [showWithdrawalBlock, setShowWithdrawalBlock] = useState(false);
   const [investmentDate, setInvestmentDate] = useState<Date | null>(null);
   const [unlockDate, setUnlockDate] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-  const [onlineUsers, setOnlineUsers] = useState(2478);
-
-  // Simulate fluctuating online users
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineUsers(prev => prev + Math.floor(Math.random() * 10) - 4);
-    }, 8000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   const handleInvestmentSuccess = () => {
     setShowInvestModal(false);
@@ -61,19 +56,8 @@ const Index: React.FC = () => {
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-3xl mx-auto">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gradient-purple glow-text animate-pulse-glow">Purple Crypto Club</h1>
-        <div className="flex items-center space-x-3 mt-1">
-          <OnlineInvestorsCounter />
-          {investmentDate && (
-            <p className="text-gray-400 text-sm flex items-center">
-              <Calendar size={14} className="inline mr-1 text-crypto-purple-light" />
-              Investor since: {investmentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </p>
-          )}
-        </div>
-      </header>
-
+      <DashboardHeader investmentDate={investmentDate} />
+      
       {/* Balance Card */}
       <Card className="glass-card p-6 mb-6">
         <h2 className="text-gray-400 text-sm mb-1">Available Balance</h2>
@@ -99,7 +83,7 @@ const Index: React.FC = () => {
         <div className="flex space-x-3">
           <Button 
             onClick={() => setShowInvestModal(true)} 
-            className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light glow-border"
+            className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light glow-border animate-pulse-glow"
           >
             <ArrowUpRight size={16} className="mr-2" />
             Invest
@@ -109,6 +93,7 @@ const Index: React.FC = () => {
             onClick={handleWithdrawalClick} 
             variant="outline" 
             className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+            disabled={!investmentDate}
           >
             <ArrowDownRight size={16} className="mr-2" />
             Withdraw
@@ -174,6 +159,9 @@ const Index: React.FC = () => {
           </Card>
         )}
       </div>
+      
+      {/* Floating Action Button */}
+      <FloatingActionButton />
       
       {/* Modals */}
       <InvestmentModal 

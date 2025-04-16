@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -42,6 +43,14 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 255 80% 75%;
+    
+    /* Crypto theme colors */
+    --crypto-purple: #9b87f5;
+    --crypto-purple-light: #b5a6ff;
+    --crypto-purple-dark: #7e69c7;
+    --crypto-navy: #1a1f2c;
+    --crypto-black: #0f111a;
+    --crypto-dark: #15171e;
   }
 }
 
@@ -79,15 +88,5 @@
   
   .text-gradient-purple {
     @apply bg-gradient-to-r from-crypto-purple-light via-crypto-purple to-crypto-purple-dark bg-clip-text text-transparent;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
   }
 }
