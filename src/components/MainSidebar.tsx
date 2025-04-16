@@ -7,7 +7,6 @@ import {
   CreditCard,
   LineChart,
   BarChart4,
-  ExternalLink,
   User
 } from 'lucide-react';
 import { 
@@ -21,10 +20,17 @@ import {
   SidebarGroupLabel,
   SidebarFooter
 } from '@/components/ui/sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const MainSidebar = () => {
+  const isMobile = useIsMobile();
+  
   return (
-    <Sidebar side="left" collapsible="icon">
+    <Sidebar 
+      side="left" 
+      collapsible="icon"
+      defaultCollapsed={isMobile}
+    >
       <SidebarHeader className="p-4">
         <div className="text-xl font-bold text-gradient-purple glow-text">
           PCC
