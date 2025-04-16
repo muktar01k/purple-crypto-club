@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface VerificationModalProps {
   isOpen: boolean;
@@ -25,12 +27,14 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
   const [code, setCode] = useState<string>('');
   const [isWaiting, setIsWaiting] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [verificationStep, setVerificationStep] = useState<'processing' | 'verify'>('processing');
   
   // Simulate verification code being sent
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         setIsWaiting(false);
+        setVerificationStep('verify');
       }, 3000);
       
       return () => clearTimeout(timer);
@@ -38,7 +42,9 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
   }, [isOpen]);
   
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCode(e.target.value);
+    // Only allow numbers
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setCode(value);
     if (error) setError('');
   };
   
@@ -70,14 +76,17 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        {isWaiting ? (
+        {verificationStep === 'processing' && (
           <div className="flex flex-col items-center justify-center py-8">
             <div className="w-16 h-16 border-4 border-crypto-purple-light border-t-transparent rounded-full animate-spin"></div>
             <p className="text-sm text-gray-300 mt-4">Contacting your bank...</p>
           </div>
-        ) : (
+        )}
+        
+        {verificationStep === 'verify' && (
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="code">Verification Code</Label>
               <div>
                 <Input
                   id="code"
@@ -98,7 +107,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
           </div>
         )}
         
-        {!isWaiting && (
+        {verificationStep === 'verify' && (
           <DialogFooter>
             <Button 
               onClick={handleVerify}

@@ -38,6 +38,8 @@ const Index: React.FC = () => {
   const [showWithdrawalBlock, setShowWithdrawalBlock] = useState(false);
   const [investmentDate, setInvestmentDate] = useState<Date | null>(null);
   const [unlockDate, setUnlockDate] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [isSignedUp, setIsSignedUp] = useState(false);
 
   const handleInvestmentSuccess = () => {
     setShowInvestModal(false);
@@ -57,6 +59,11 @@ const Index: React.FC = () => {
       alert("Withdrawal functionality would go here");
     }
   };
+  
+  const handleSignupSuccess = (name: string) => {
+    setUserName(name);
+    setIsSignedUp(true);
+  };
 
   return (
     <SidebarProvider>
@@ -66,8 +73,14 @@ const Index: React.FC = () => {
         <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto">
           {/* Header with Signup Button */}
           <div className="flex justify-between items-center mb-8">
-            <DashboardHeader investmentDate={investmentDate} />
-            <SignupButton />
+            <DashboardHeader 
+              investmentDate={investmentDate} 
+              userName={userName}
+            />
+            <SignupButton 
+              onSignupSuccess={handleSignupSuccess}
+              isSignedUp={isSignedUp}
+            />
           </div>
           
           {/* Main Content */}

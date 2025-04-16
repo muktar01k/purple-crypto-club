@@ -17,7 +17,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 
-const SignupButton = () => {
+interface SignupButtonProps {
+  onSignupSuccess?: (name: string) => void;
+  isSignedUp?: boolean;
+}
+
+const SignupButton: React.FC<SignupButtonProps> = ({ 
+  onSignupSuccess, 
+  isSignedUp = false 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const { toast } = useToast();
@@ -49,16 +57,27 @@ const SignupButton = () => {
     // Show toast notification
     toast({
       title: "Account created!",
-      description: `Welcome to the Crypto Club, ${values.name}!`
+      description: `Welcome to DIVO, ${values.name}!`
     });
     
-    // Close dialog after 2 seconds
+    // Close dialog after 2 seconds and call the callback with the user's name
     setTimeout(() => {
       setIsOpen(false);
+      
+      // Call the onSignupSuccess callback with the user's name
+      if (onSignupSuccess) {
+        onSignupSuccess(values.name);
+      }
+      
       // Reset welcome state after closing
       setTimeout(() => setShowWelcome(false), 500);
     }, 2000);
   };
+
+  // If user is already signed up, don't show the button
+  if (isSignedUp) {
+    return null;
+  }
 
   return (
     <>
@@ -75,7 +94,7 @@ const SignupButton = () => {
           {!showWelcome ? (
             <>
               <DialogHeader>
-                <DialogTitle className="text-white">Join the Crypto Club</DialogTitle>
+                <DialogTitle className="text-white">Join DIVO</DialogTitle>
                 <DialogDescription>
                   Enter your details to create your account and start investing.
                 </DialogDescription>

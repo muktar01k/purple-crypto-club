@@ -29,11 +29,11 @@ const MainSidebar = () => {
     <Sidebar 
       side="left" 
       collapsible="icon"
-      defaultCollapsed={isMobile}
+      collapsed={isMobile}
     >
       <SidebarHeader className="p-4">
         <div className="text-xl font-bold text-gradient-purple glow-text">
-          PCC
+          DIVO
         </div>
       </SidebarHeader>
       
