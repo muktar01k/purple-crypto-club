@@ -7,7 +7,8 @@ import {
   CreditCard,
   LineChart,
   BarChart4,
-  User
+  User,
+  ArrowUpCircle
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -55,9 +56,12 @@ const MainSidebar = () => {
             </SidebarMenuItem>
             
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Performance">
-                <LineChart className="text-crypto-purple" />
-                <span>Performance</span>
+              <SidebarMenuButton tooltip="Performance" active>
+                <ArrowUpCircle className="text-green-400" />
+                <span className="flex items-center">
+                  Investment Growth
+                  <span className="ml-2 text-xs bg-green-400/20 text-green-400 px-1.5 rounded-full">+12.4%</span>
+                </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

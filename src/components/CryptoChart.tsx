@@ -70,7 +70,10 @@ const CryptoChart: React.FC<CryptoChartProps> = ({ className }) => {
         <ChartContainer 
           config={{
             performance: { 
-              theme: { dark: lineColor },
+              theme: { 
+                dark: lineColor,
+                light: lineColor // Adding the missing light property
+              },
               label: "Performance" 
             }
           }}
