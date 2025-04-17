@@ -56,7 +56,7 @@ const MainSidebar = () => {
             </SidebarMenuItem>
             
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Performance" active>
+              <SidebarMenuButton tooltip="Performance" isActive>
                 <ArrowUpCircle className="text-green-400" />
                 <span className="flex items-center">
                   Investment Growth

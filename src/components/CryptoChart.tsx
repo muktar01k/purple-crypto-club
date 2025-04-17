@@ -58,21 +58,13 @@ const CryptoChart: React.FC<CryptoChartProps> = ({ className }) => {
   
   return (
     <div className={`w-full ${className}`}>
-      {/* Performance stats */}
-      <div className="flex justify-between mb-2 text-sm">
-        <div className="text-gray-400">Initial: $1,000.00</div>
-        <div className="text-gray-400">
-          Current: ${data.length > 0 ? data[data.length - 1].value.toFixed(2) : "1,000.00"}
-        </div>
-      </div>
-      
-      <div className="h-24">
+      <div className="h-28">
         <ChartContainer 
           config={{
             performance: { 
               theme: { 
                 dark: lineColor,
-                light: lineColor // Adding the missing light property
+                light: lineColor 
               },
               label: "Performance" 
             }
