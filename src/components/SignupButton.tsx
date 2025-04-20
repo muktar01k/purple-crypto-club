@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { UserPlus } from 'lucide-react';
 import {
@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { UserService } from "@/services/UserService";
 
 interface SignupButtonProps {
   onSignupSuccess?: (name: string) => void;
@@ -29,6 +30,22 @@ const SignupButton: React.FC<SignupButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const { toast } = useToast();
+  
+  // Check if user is already logged in via localStorage
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  useEffect(() => {
+    const userLoggedIn = UserService.isUserLoggedIn();
+    setIsLoggedIn(userLoggedIn);
+    
+    // If user is logged in from localStorage, call the success callback
+    if (userLoggedIn && onSignupSuccess) {
+      const userData = UserService.getUserData();
+      if (userData) {
+        onSignupSuccess(userData.name);
+      }
+    }
+  }, [onSignupSuccess]);
 
   const formSchema = z.object({
     name: z.string().min(2, {
@@ -48,8 +65,9 @@ const SignupButton: React.FC<SignupButtonProps> = ({
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Handle signup logic here
-    console.log(values);
+    // Save user data to localStorage
+    UserService.saveUser(values.name, values.email);
+    setIsLoggedIn(true);
     
     // Show welcome message
     setShowWelcome(true);
@@ -74,8 +92,8 @@ const SignupButton: React.FC<SignupButtonProps> = ({
     }, 2000);
   };
 
-  // If user is already signed up, don't show the button
-  if (isSignedUp) {
+  // If user is already signed up or logged in via localStorage, don't show the button
+  if (isSignedUp || isLoggedIn) {
     return null;
   }
 

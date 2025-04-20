@@ -8,7 +8,8 @@ import {
   LineChart,
   BarChart4,
   User,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Gift
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -81,6 +82,13 @@ const MainSidebar = () => {
               <SidebarMenuButton tooltip="Market Data">
                 <BarChart4 className="text-crypto-purple" />
                 <span>Market Data</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Gift Cards">
+                <Gift className="text-crypto-purple" />
+                <span>Gift Cards</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

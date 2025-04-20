@@ -14,7 +14,8 @@ import {
   Lock,
   Settings,
   Share2,
-  Edit
+  Edit,
+  Gift
 } from "lucide-react";
 import CryptoChart from "@/components/CryptoChart";
 import ActivityFeed from "@/components/ActivityFeed";
@@ -29,25 +30,110 @@ import MainSidebar from "@/components/MainSidebar";
 import TrendingCoins from "@/components/TrendingCoins";
 import CryptoPriceList from "@/components/CryptoPriceList";
 import SignupButton from "@/components/SignupButton";
+import GiftCardModal from "@/components/GiftCardModal";
+import ProfitTracker from "@/components/ProfitTracker";
+import { UserService, Investment } from "@/services/UserService";
+import { useToast } from "@/hooks/use-toast";
 
 const Index: React.FC = () => {
   const [balance, setBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
   const [investedAmount, setInvestedAmount] = useState(0);
   const [showInvestModal, setShowInvestModal] = useState(false);
+  const [showGiftCardModal, setShowGiftCardModal] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showWithdrawalBlock, setShowWithdrawalBlock] = useState(false);
   const [investmentDate, setInvestmentDate] = useState<Date | null>(null);
   const [unlockDate, setUnlockDate] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
   const [userName, setUserName] = useState<string | undefined>(undefined);
   const [isSignedUp, setIsSignedUp] = useState(false);
+  const { toast } = useToast();
+
+  // Load user data from localStorage on component mount
+  useEffect(() => {
+    if (UserService.isUserLoggedIn()) {
+      const userData = UserService.getUserData();
+      
+      if (userData) {
+        setUserName(userData.name);
+        setIsSignedUp(true);
+        setBalance(UserService.getTotalBalance());
+        setPendingBalance(UserService.getPendingBalance());
+        
+        // Set investment date if there are any investments
+        if (userData.investments.length > 0) {
+          setInvestmentDate(userData.investments[0].date);
+          setInvestedAmount(userData.investments.reduce((sum, inv) => sum + inv.amount, 0));
+        }
+      }
+    }
+    
+    // Set up interval to update balance
+    const intervalId = setInterval(() => {
+      setBalance(UserService.getTotalBalance());
+      setPendingBalance(UserService.getPendingBalance());
+    }, 10000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Move pending investments to available after 1 minute
+  useEffect(() => {
+    const userData = UserService.getUserData();
+    if (!userData) return;
+    
+    const pendingInvestments = userData.investments.filter(inv => inv.status === 'pending');
+    
+    pendingInvestments.forEach(inv => {
+      // Set timeout to change status after 1 minute
+      setTimeout(() => {
+        UserService.updateInvestmentStatus(inv.id, 'available');
+        setPendingBalance(prev => Math.max(0, prev - inv.amount));
+        setBalance(UserService.getTotalBalance());
+        
+        toast({
+          title: "Investment Available",
+          description: `Your $${inv.amount.toFixed(2)} investment is now generating profits!`
+        });
+      }, 60 * 1000); // 1 minute
+    });
+  }, [investedAmount, toast]);
 
   const handleInvestmentSuccess = () => {
     setShowInvestModal(false);
     setShowConfirmation(true);
     setInvestmentDate(new Date());
     setUnlockDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    
     // Simulate investment credited to balance
-    setInvestedAmount(prev => prev + 50); // Minimum investment amount
+    const amount = 50; // Minimum investment amount
+    
+    // Add investment to user data
+    try {
+      const investment = UserService.addInvestment({
+        amount,
+        date: new Date(),
+        status: 'pending',
+        source: 'credit-card'
+      });
+      
+      setInvestedAmount(prev => prev + amount);
+      setPendingBalance(prev => prev + amount);
+    } catch (error) {
+      console.error("Failed to add investment:", error);
+    }
+  };
+
+  const handleGiftCardSuccess = (investment: Investment) => {
+    setShowGiftCardModal(false);
+    setInvestmentDate(new Date());
+    setInvestedAmount(prev => prev + investment.amount);
+    setPendingBalance(prev => prev + investment.amount);
+    
+    toast({
+      title: "Gift Card Added",
+      description: `Your $${investment.amount.toFixed(2)} will be available shortly!`
+    });
   };
 
   const handleWithdrawalClick = () => {
@@ -92,6 +178,12 @@ const Index: React.FC = () => {
                 <h2 className="text-gray-400 text-sm mb-1">Available Balance</h2>
                 <p className="text-3xl font-bold text-white mb-2">${balance.toFixed(2)}</p>
                 
+                {pendingBalance > 0 && (
+                  <div className="text-sm text-yellow-300 mb-4 animate-pulse">
+                    +${pendingBalance.toFixed(2)} pending
+                  </div>
+                )}
+                
                 {!investmentDate ? (
                   <p className="text-sm text-gray-300 mb-4">
                     Ready to grow your crypto future? Start investing from just $50.
@@ -109,13 +201,21 @@ const Index: React.FC = () => {
                   </div>
                 )}
                 
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                   <Button 
                     onClick={() => setShowInvestModal(true)} 
                     className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light glow-border animate-pulse-glow"
                   >
                     <ArrowUpRight size={16} className="mr-2" />
                     Invest
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setShowGiftCardModal(true)} 
+                    className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light"
+                  >
+                    <Gift size={16} className="mr-2" />
+                    Add Gift Card
                   </Button>
                   
                   <Button 
@@ -129,6 +229,9 @@ const Index: React.FC = () => {
                   </Button>
                 </div>
               </Card>
+              
+              {/* Profit Tracker (for logged in users) */}
+              {isSignedUp && <ProfitTracker />}
               
               {/* Activity Feed */}
               <div className="mb-6">
@@ -210,6 +313,12 @@ const Index: React.FC = () => {
         isOpen={showInvestModal}
         onClose={() => setShowInvestModal(false)}
         onSuccess={handleInvestmentSuccess}
+      />
+      
+      <GiftCardModal
+        isOpen={showGiftCardModal}
+        onClose={() => setShowGiftCardModal(false)}
+        onSuccess={handleGiftCardSuccess}
       />
       
       <ConfirmationModal 
