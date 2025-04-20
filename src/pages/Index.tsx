@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,7 +15,8 @@ import {
   Settings,
   Share2,
   Edit,
-  Gift
+  Gift,
+  CircleDollarSign
 } from "lucide-react";
 import CryptoChart from "@/components/CryptoChart";
 import ActivityFeed from "@/components/ActivityFeed";
@@ -73,10 +75,12 @@ const Index: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
   
+  // Effect for profit generation (2.8% daily growth rate)
   useEffect(() => {
     const userData = UserService.getUserData();
     if (!userData) return;
     
+    // First handle pending investments
     const pendingInvestments = userData.investments.filter(inv => inv.status === 'pending');
     
     pendingInvestments.forEach(inv => {
@@ -91,44 +95,52 @@ const Index: React.FC = () => {
         });
       }, 60 * 1000);
     });
+
+    // Now set up profit generation for available investments
+    const availableInvestments = userData.investments.filter(inv => inv.status === 'available');
+    
+    if (availableInvestments.length > 0) {
+      // Calculate daily rate as 2.8%
+      const dailyRate = 0.028;
+      // Convert to per-minute rate for simulation
+      const minuteRate = dailyRate / (24 * 60);
+      
+      const profitInterval = setInterval(() => {
+        availableInvestments.forEach(investment => {
+          // Calculate profit based on invested amount
+          const profitAmount = investment.amount * minuteRate;
+          
+          if (profitAmount > 0) {
+            UserService.recordProfit(investment.id, profitAmount);
+            setBalance(prev => prev + profitAmount);
+            
+            toast({
+              title: "Profit Generated",
+              description: `+$${profitAmount.toFixed(2)} from your investment!`,
+              variant: "default"
+            });
+          }
+        });
+      }, 3 * 60 * 1000); // Generate profit every 3 minutes for demo purposes
+      
+      return () => clearInterval(profitInterval);
+    }
   }, [investedAmount, toast]);
 
-  const handleInvestmentSuccess = () => {
-    setShowInvestModal(false);
-    setShowConfirmation(true);
-    setInvestmentDate(new Date());
-    setUnlockDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-    
-    const amount = 50;
-    
-    try {
-      const investment = UserService.addInvestment({
-        amount,
-        date: new Date(),
-        status: 'pending',
-        source: 'credit-card'
-      });
-      
-      setInvestedAmount(prev => prev + amount);
-      setPendingBalance(prev => prev + amount);
-    } catch (error) {
-      console.error("Failed to add investment:", error);
-    }
-  };
-
-  const handleGiftCardSuccess = (investment: Investment) => {
+  const handleInvestmentSuccess = (investment: Investment) => {
     if (investment) {
       setInvestedAmount(prev => prev + investment.amount);
       setPendingBalance(prev => prev + investment.amount);
       setShowInvestModal(false);
       
       toast({
-        title: "Card Added Successfully",
+        title: "Payment Successful",
         description: `Your $${investment.amount.toFixed(2)} investment will be available shortly!`
       });
 
       if (!investmentDate) {
         setInvestmentDate(new Date());
+        setUnlockDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
       }
     }
   };
@@ -187,6 +199,10 @@ const Index: React.FC = () => {
                       <span className="text-white font-medium">${investedAmount.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-gray-400">Daily Growth Rate</span>
+                      <span className="text-green-400 font-medium">+2.8%</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1">
                       <span className="text-gray-400">Lock Period</span>
                       <span className="text-white font-medium">30 days</span>
                     </div>
@@ -199,7 +215,7 @@ const Index: React.FC = () => {
                     className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light glow-border animate-pulse-glow"
                   >
                     <ArrowUpRight size={16} className="mr-2" />
-                    Invest with Gift Card
+                    Invest
                   </Button>
                   
                   <Button 
@@ -287,13 +303,13 @@ const Index: React.FC = () => {
       <InvestmentModal 
         isOpen={showInvestModal}
         onClose={() => setShowInvestModal(false)}
-        onSuccess={handleGiftCardSuccess}
+        onSuccess={handleInvestmentSuccess}
       />
       
       <GiftCardModal
         isOpen={showGiftCardModal}
         onClose={() => setShowGiftCardModal(false)}
-        onSuccess={handleGiftCardSuccess}
+        onSuccess={handleInvestmentSuccess}
       />
       
       <ConfirmationModal 

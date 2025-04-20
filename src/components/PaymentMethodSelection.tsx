@@ -1,14 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, CameraIcon, Check, Loader2 } from "lucide-react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, CameraIcon, Check, Loader2, CircleCheck, CircleX, Bitcoin, CreditCard, Paypal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserService, Investment } from "@/services/UserService";
 
@@ -28,16 +22,19 @@ interface PaymentMethodSelectionProps {
   onBack: () => void;
   onSuccess: (investment: Investment) => void;
   amount: number;
+  paymentMethod: 'gift-card' | 'go-cash' | 'bitcoin' | 'paypal';
 }
 
 const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
   onBack,
   onSuccess,
-  amount
+  amount,
+  paymentMethod
 }) => {
   const [cardType, setCardType] = useState<string>('');
   const [cardCode, setCardCode] = useState<string>('');
   const [cardImage, setCardImage] = useState<string | null>(null);
+  const [bitcoinAddress, setBitcoinAddress] = useState<string>('bc1q8z7g5s72xzvdxqy2ythm8vk9j6wy4pjlfm3yye');
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -120,7 +117,7 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateGiftCardForm = (): boolean => {
     if (!cardType) {
       setError('Please select a gift card type');
       return false;
@@ -140,17 +137,16 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!validateForm()) return;
+    if (paymentMethod === 'gift-card' && !validateGiftCardForm()) return;
     
     setIsProcessing(true);
     setError('');
     
-    // Simulate AI processing
     const interval = setInterval(() => {
       setProcessingProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          processGiftCard();
+          processPayment();
           return 100;
         }
         return prev + 2;
@@ -158,19 +154,18 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
     }, 600);
   };
 
-  const processGiftCard = () => {
+  const processPayment = () => {
     try {
-      // Create a new investment from the gift card
       const investment = UserService.addInvestment({
         amount,
         date: new Date(),
         status: 'pending',
-        source: 'gift-card',
-        cardDetails: {
+        source: paymentMethod,
+        cardDetails: paymentMethod === 'gift-card' ? {
           type: cardType,
           code: cardCode,
           imageUrl: cardImage || undefined
-        }
+        } : undefined
       });
       
       onSuccess(investment);
@@ -179,7 +174,7 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
     } catch (error) {
       toast({
         title: 'Processing Error',
-        description: 'There was an error processing your gift card. Please try again.',
+        description: 'There was an error processing your payment. Please try again.',
         variant: 'destructive'
       });
       setIsProcessing(false);
@@ -194,10 +189,15 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
             <Loader2 size={48} className="animate-spin" />
           </div>
           
-          <h3 className="text-xl font-medium text-white">Processing your gift card</h3>
+          <h3 className="text-xl font-medium text-white">
+            {paymentMethod === 'gift-card' ? 'Processing your gift card' : 
+             paymentMethod === 'bitcoin' ? 'Processing your Bitcoin payment' :
+             paymentMethod === 'paypal' ? 'Processing your PayPal payment' :
+             'Processing your GoCash payment'}
+          </h3>
           
           <p className="text-gray-300 text-sm">
-            Please wait while our AI assistant verifies your gift card...
+            Please wait while our AI assistant verifies your payment...
           </p>
           
           <div className="w-full">
@@ -214,104 +214,198 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
     );
   }
 
+  const renderGiftCardForm = () => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-sm text-gray-300">Gift Card Type</Label>
+        <select 
+          value={cardType} 
+          onChange={(e) => setCardType(e.target.value)}
+          className="w-full border-crypto-purple/30 bg-crypto-black/40 text-white rounded-md p-2"
+        >
+          <option value="">Select gift card type</option>
+          {CARD_TYPES.map(card => (
+            <option key={card.value} value={card.value}>{card.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm text-gray-300">Gift Card Code</Label>
+        <Input
+          value={cardCode}
+          onChange={(e) => setCardCode(e.target.value)}
+          placeholder="Enter the gift card code"
+          className="border-crypto-purple/30 bg-crypto-black/40 text-white"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm text-gray-300">Gift Card Image</Label>
+        
+        {!cardImage && !isCameraOpen ? (
+          <div className="flex gap-3">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+            >
+              Upload Image
+            </Button>
+            
+            <Button
+              onClick={startCamera}
+              variant="outline"
+              className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+            >
+              <CameraIcon size={16} className="mr-2" />
+              Take Photo
+            </Button>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+        ) : null}
+        
+        {isCameraOpen && (
+          <div className="relative rounded-md overflow-hidden bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-48 object-cover"
+            />
+            <div className="absolute bottom-0 left-0 right-0 p-2 flex justify-center bg-black/50">
+              <Button
+                onClick={capturePhoto}
+                className="bg-crypto-purple hover:bg-crypto-purple-light"
+              >
+                Capture
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {cardImage && (
+          <div className="relative">
+            <img
+              src={cardImage}
+              alt="Gift Card"
+              className="w-full h-48 object-contain rounded-md border border-crypto-purple/30"
+            />
+            <Button
+              onClick={() => setCardImage(null)}
+              variant="outline"
+              size="sm"
+              className="absolute top-2 right-2 border-crypto-purple/30 bg-black/50 text-white hover:bg-black/70"
+            >
+              Change
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderBitcoinForm = () => (
+    <div className="space-y-4">
+      <div className="p-4 bg-crypto-purple/10 rounded-lg border border-crypto-purple/20 flex flex-col items-center">
+        <p className="text-sm text-gray-300 mb-3">Send exactly <span className="font-bold text-white">${amount}</span> worth of BTC to:</p>
+        <div className="p-3 bg-white rounded-lg w-full text-center mb-2">
+          <p className="text-xs text-crypto-black font-mono break-all">{bitcoinAddress}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+          onClick={() => {
+            navigator.clipboard.writeText(bitcoinAddress);
+            toast({
+              title: "Address Copied",
+              description: "Bitcoin address copied to clipboard"
+            });
+          }}
+        >
+          Copy Address
+        </Button>
+      </div>
+      
+      <div className="rounded-lg border border-crypto-purple/20 p-4">
+        <h4 className="text-sm font-medium text-white mb-2">Payment Instructions:</h4>
+        <ul className="text-xs text-gray-300 space-y-1">
+          <li className="flex items-start">
+            <span className="mr-2 text-crypto-purple mt-0.5">1.</span>
+            <span>Send the exact amount using your wallet of choice</span>
+          </li>
+          <li className="flex items-start">
+            <span className="mr-2 text-crypto-purple mt-0.5">2.</span>
+            <span>Wait for blockchain confirmation (usually 10-30 minutes)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="mr-2 text-crypto-purple mt-0.5">3.</span>
+            <span>Click "I've Sent Bitcoin" below once payment is complete</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+
+  const renderPayPalForm = () => (
+    <div className="space-y-4">
+      <div className="p-6 border border-crypto-purple/20 rounded-lg bg-crypto-purple/10 flex flex-col items-center justify-center">
+        <Paypal className="h-12 w-12 text-crypto-purple mb-3" />
+        <p className="text-sm text-gray-300 text-center">
+          You'll be redirected to PayPal to complete your payment of <span className="font-bold text-white">${amount}</span>
+        </p>
+      </div>
+      
+      <div className="text-xs text-gray-400">
+        <p>• Secure payment processing via PayPal</p>
+        <p>• Investment will be credited immediately after payment</p>
+        <p>• No additional fees for PayPal transactions</p>
+      </div>
+    </div>
+  );
+
+  const renderGoCashForm = () => (
+    <div className="space-y-4">
+      <div className="p-6 border border-crypto-purple/20 rounded-lg bg-crypto-purple/10 flex flex-col items-center justify-center">
+        <CircleDollarSign className="h-12 w-12 text-crypto-purple mb-3" />
+        <p className="text-lg font-bold text-white">${amount}</p>
+        <p className="text-sm text-gray-300 text-center">
+          Use your GoCash balance to complete this payment
+        </p>
+      </div>
+      
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-300">GoCash Balance:</span>
+        <span className="text-white font-medium">${(amount * 1.5).toFixed(2)}</span>
+      </div>
+      
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-300">After Payment:</span>
+        <span className="text-white font-medium">${(amount * 0.5).toFixed(2)}</span>
+      </div>
+      
+      <div className="text-xs text-gray-400 flex items-center mt-3">
+        <CircleCheck className="text-green-400 h-4 w-4 mr-1" />
+        Sufficient balance for this payment
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 py-4">
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label className="text-sm text-gray-300">Gift Card Type</Label>
-          <Select value={cardType} onValueChange={setCardType}>
-            <SelectTrigger className="border-crypto-purple/30 bg-crypto-black/40 text-white">
-              <SelectValue placeholder="Select gift card type" />
-            </SelectTrigger>
-            <SelectContent className="bg-crypto-navy border-crypto-purple/30">
-              {CARD_TYPES.map(card => (
-                <SelectItem key={card.value} value={card.value} className="text-white">
-                  {card.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm text-gray-300">Gift Card Code</Label>
-          <Input
-            value={cardCode}
-            onChange={(e) => setCardCode(e.target.value)}
-            placeholder="Enter the gift card code"
-            className="border-crypto-purple/30 bg-crypto-black/40 text-white"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm text-gray-300">Gift Card Image</Label>
-          
-          {!cardImage && !isCameraOpen ? (
-            <div className="flex gap-3">
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
-              >
-                Upload Image
-              </Button>
-              
-              <Button
-                onClick={startCamera}
-                variant="outline"
-                className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
-              >
-                <CameraIcon size={16} className="mr-2" />
-                Take Photo
-              </Button>
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-            </div>
-          ) : null}
-          
-          {isCameraOpen && (
-            <div className="relative rounded-md overflow-hidden bg-black">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-48 object-cover"
-              />
-              <div className="absolute bottom-0 left-0 right-0 p-2 flex justify-center bg-black/50">
-                <Button
-                  onClick={capturePhoto}
-                  className="bg-crypto-purple hover:bg-crypto-purple-light"
-                >
-                  Capture
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          {cardImage && (
-            <div className="relative">
-              <img
-                src={cardImage}
-                alt="Gift Card"
-                className="w-full h-48 object-contain rounded-md border border-crypto-purple/30"
-              />
-              <Button
-                onClick={() => setCardImage(null)}
-                variant="outline"
-                size="sm"
-                className="absolute top-2 right-2 border-crypto-purple/30 bg-black/50 text-white hover:bg-black/70"
-              >
-                Change
-              </Button>
-            </div>
-          )}
-        </div>
+        {paymentMethod === 'gift-card' && renderGiftCardForm()}
+        {paymentMethod === 'bitcoin' && renderBitcoinForm()}
+        {paymentMethod === 'paypal' && renderPayPalForm()}
+        {paymentMethod === 'go-cash' && renderGoCashForm()}
 
         {error && (
           <div className="text-red-400 text-sm">
@@ -334,7 +428,10 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
           onClick={handleSubmit}
           className="bg-crypto-purple hover:bg-crypto-purple-light text-white"
         >
-          Submit Gift Card
+          {paymentMethod === 'gift-card' ? 'Submit Gift Card' : 
+           paymentMethod === 'bitcoin' ? 'I\'ve Sent Bitcoin' :
+           paymentMethod === 'paypal' ? 'Continue to PayPal' :
+           'Pay with GoCash'}
         </Button>
       </div>
     </div>
