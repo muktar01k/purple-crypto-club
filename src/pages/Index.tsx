@@ -117,17 +117,19 @@ const Index: React.FC = () => {
   };
 
   const handleGiftCardSuccess = (investment: Investment) => {
-    setInvestedAmount(prev => prev + investment.amount);
-    setPendingBalance(prev => prev + investment.amount);
-    setShowInvestModal(false);
-    
-    toast({
-      title: "Card Added Successfully",
-      description: `Your $${investment.amount.toFixed(2)} investment will be available shortly!`
-    });
+    if (investment) {
+      setInvestedAmount(prev => prev + investment.amount);
+      setPendingBalance(prev => prev + investment.amount);
+      setShowInvestModal(false);
+      
+      toast({
+        title: "Card Added Successfully",
+        description: `Your $${investment.amount.toFixed(2)} investment will be available shortly!`
+      });
 
-    if (!investmentDate) {
-      setInvestmentDate(new Date());
+      if (!investmentDate) {
+        setInvestmentDate(new Date());
+      }
     }
   };
 

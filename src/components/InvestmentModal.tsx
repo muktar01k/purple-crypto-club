@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PaymentMethodSelection from './PaymentMethodSelection';
+import { Investment } from '@/services/UserService';
 
 interface InvestmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (investment: Investment) => void;
 }
 
 const InvestmentModal: React.FC<InvestmentModalProps> = ({

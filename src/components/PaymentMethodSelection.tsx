@@ -10,7 +10,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { UserService } from "@/services/UserService";
+import { UserService, Investment } from "@/services/UserService";
 
 const CARD_TYPES = [
   { value: 'amazon', label: 'Amazon Gift Card' },
@@ -26,7 +26,7 @@ const CARD_TYPES = [
 
 interface PaymentMethodSelectionProps {
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (investment: Investment) => void;
   amount: number;
 }
 
@@ -173,7 +173,7 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
         }
       });
       
-      onSuccess();
+      onSuccess(investment);
       resetForm();
       
     } catch (error) {
