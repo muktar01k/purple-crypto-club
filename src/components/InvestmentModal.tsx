@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Dialog, 
@@ -14,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import PaymentMethodSelection from './PaymentMethodSelection';
 import { Investment } from '@/services/UserService';
+import { Gift, Bitcoin, CreditCard, CircleDollarSign } from "lucide-react";
 
 interface InvestmentModalProps {
   isOpen: boolean;

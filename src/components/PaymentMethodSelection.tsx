@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, CameraIcon, Check, Loader2, CircleCheck, CircleX, Bitcoin, CreditCard, Paypal } from "lucide-react";
+import { ArrowLeft, CameraIcon, Check, Loader2, CircleCheck, CircleX, Bitcoin, CreditCard, CircleDollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserService, Investment } from "@/services/UserService";
 
@@ -156,11 +157,17 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
 
   const processPayment = () => {
     try {
+      const paymentSource = 
+        paymentMethod === 'gift-card' ? 'gift-card' :
+        paymentMethod === 'bitcoin' ? 'other' :
+        paymentMethod === 'paypal' ? 'credit-card' :
+        'other'; // go-cash maps to 'other'
+        
       const investment = UserService.addInvestment({
         amount,
         date: new Date(),
         status: 'pending',
-        source: paymentMethod,
+        source: paymentSource,
         cardDetails: paymentMethod === 'gift-card' ? {
           type: cardType,
           code: cardCode,
@@ -358,7 +365,7 @@ const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
   const renderPayPalForm = () => (
     <div className="space-y-4">
       <div className="p-6 border border-crypto-purple/20 rounded-lg bg-crypto-purple/10 flex flex-col items-center justify-center">
-        <Paypal className="h-12 w-12 text-crypto-purple mb-3" />
+        <CreditCard className="h-12 w-12 text-crypto-purple mb-3" />
         <p className="text-sm text-gray-300 text-center">
           You'll be redirected to PayPal to complete your payment of <span className="font-bold text-white">${amount}</span>
         </p>
