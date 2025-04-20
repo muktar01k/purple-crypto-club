@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -49,7 +48,6 @@ const Index: React.FC = () => {
   const [isSignedUp, setIsSignedUp] = useState(false);
   const { toast } = useToast();
 
-  // Load user data from localStorage on component mount
   useEffect(() => {
     if (UserService.isUserLoggedIn()) {
       const userData = UserService.getUserData();
@@ -60,7 +58,6 @@ const Index: React.FC = () => {
         setBalance(UserService.getTotalBalance());
         setPendingBalance(UserService.getPendingBalance());
         
-        // Set investment date if there are any investments
         if (userData.investments.length > 0) {
           setInvestmentDate(userData.investments[0].date);
           setInvestedAmount(userData.investments.reduce((sum, inv) => sum + inv.amount, 0));
@@ -68,7 +65,6 @@ const Index: React.FC = () => {
       }
     }
     
-    // Set up interval to update balance
     const intervalId = setInterval(() => {
       setBalance(UserService.getTotalBalance());
       setPendingBalance(UserService.getPendingBalance());
@@ -77,7 +73,6 @@ const Index: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
   
-  // Move pending investments to available after 1 minute
   useEffect(() => {
     const userData = UserService.getUserData();
     if (!userData) return;
@@ -85,7 +80,6 @@ const Index: React.FC = () => {
     const pendingInvestments = userData.investments.filter(inv => inv.status === 'pending');
     
     pendingInvestments.forEach(inv => {
-      // Set timeout to change status after 1 minute
       setTimeout(() => {
         UserService.updateInvestmentStatus(inv.id, 'available');
         setPendingBalance(prev => Math.max(0, prev - inv.amount));
@@ -95,7 +89,7 @@ const Index: React.FC = () => {
           title: "Investment Available",
           description: `Your $${inv.amount.toFixed(2)} investment is now generating profits!`
         });
-      }, 60 * 1000); // 1 minute
+      }, 60 * 1000);
     });
   }, [investedAmount, toast]);
 
@@ -105,10 +99,8 @@ const Index: React.FC = () => {
     setInvestmentDate(new Date());
     setUnlockDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     
-    // Simulate investment credited to balance
-    const amount = 50; // Minimum investment amount
+    const amount = 50;
     
-    // Add investment to user data
     try {
       const investment = UserService.addInvestment({
         amount,
@@ -125,23 +117,24 @@ const Index: React.FC = () => {
   };
 
   const handleGiftCardSuccess = (investment: Investment) => {
-    setShowGiftCardModal(false);
-    setInvestmentDate(new Date());
     setInvestedAmount(prev => prev + investment.amount);
     setPendingBalance(prev => prev + investment.amount);
+    setShowInvestModal(false);
     
     toast({
-      title: "Gift Card Added",
-      description: `Your $${investment.amount.toFixed(2)} will be available shortly!`
+      title: "Card Added Successfully",
+      description: `Your $${investment.amount.toFixed(2)} investment will be available shortly!`
     });
+
+    if (!investmentDate) {
+      setInvestmentDate(new Date());
+    }
   };
 
   const handleWithdrawalClick = () => {
-    // Check if withdrawal is allowed (1 month passed)
     if (!investmentDate || (Date.now() - investmentDate.getTime()) < 30 * 24 * 60 * 60 * 1000) {
       setShowWithdrawalBlock(true);
     } else {
-      // Allow withdrawal (not implemented in this demo)
       alert("Withdrawal functionality would go here");
     }
   };
@@ -157,7 +150,6 @@ const Index: React.FC = () => {
         <MainSidebar />
         
         <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto">
-          {/* Header with Signup Button */}
           <div className="flex justify-between items-center mb-8">
             <DashboardHeader 
               investmentDate={investmentDate} 
@@ -169,17 +161,15 @@ const Index: React.FC = () => {
             />
           </div>
           
-          {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column */}
             <div className="lg:col-span-2">
-              {/* Balance Card */}
               <Card className="glass-card p-6 mb-6">
                 <h2 className="text-gray-400 text-sm mb-1">Available Balance</h2>
                 <p className="text-3xl font-bold text-white mb-2">${balance.toFixed(2)}</p>
                 
                 {pendingBalance > 0 && (
-                  <div className="text-sm text-yellow-300 mb-4 animate-pulse">
+                  <div className="text-sm text-yellow-300 mb-4 animate-pulse flex items-center">
+                    <span className="inline-block h-2 w-2 rounded-full bg-yellow-300 mr-2 animate-pulse"></span>
                     +${pendingBalance.toFixed(2)} pending
                   </div>
                 )}
@@ -207,15 +197,7 @@ const Index: React.FC = () => {
                     className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light glow-border animate-pulse-glow"
                   >
                     <ArrowUpRight size={16} className="mr-2" />
-                    Invest
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setShowGiftCardModal(true)} 
-                    className="flex-1 bg-crypto-purple hover:bg-crypto-purple-light"
-                  >
-                    <Gift size={16} className="mr-2" />
-                    Add Gift Card
+                    Invest with Gift Card
                   </Button>
                   
                   <Button 
@@ -230,15 +212,12 @@ const Index: React.FC = () => {
                 </div>
               </Card>
               
-              {/* Profit Tracker (for logged in users) */}
               {isSignedUp && <ProfitTracker />}
               
-              {/* Activity Feed */}
               <div className="mb-6">
                 <ActivityFeed />
               </div>
               
-              {/* Bitcoin Chart */}
               <Card className="glass-card p-6 mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="flex items-center font-medium text-white">
@@ -253,10 +232,8 @@ const Index: React.FC = () => {
                 <CryptoChart />
               </Card>
               
-              {/* Trending Coins */}
               <TrendingCoins />
               
-              {/* Security and Lock Period Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="glass-card p-6 animate-fade-in">
                   <div className="flex items-start space-x-4">
@@ -296,23 +273,19 @@ const Index: React.FC = () => {
               </div>
             </div>
             
-            {/* Right Column */}
             <div>
-              {/* Cryptocurrency Price List */}
               <CryptoPriceList />
             </div>
           </div>
           
-          {/* Floating Action Button */}
           <FloatingActionButton />
         </div>
       </div>
       
-      {/* Modals */}
       <InvestmentModal 
         isOpen={showInvestModal}
         onClose={() => setShowInvestModal(false)}
-        onSuccess={handleInvestmentSuccess}
+        onSuccess={handleGiftCardSuccess}
       />
       
       <GiftCardModal

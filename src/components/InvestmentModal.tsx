@@ -32,7 +32,6 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
     const value = e.target.value;
     setAmount(value);
     
-    // Clear error if amount becomes valid
     if (Number(value) >= 50) {
       setError('');
     }
@@ -44,7 +43,6 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
       setError('Minimum investment amount is $50');
       return;
     }
-    
     setStep('payment');
   };
   
@@ -52,21 +50,17 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
     setStep('amount');
   };
   
-  const handlePaymentSuccess = () => {
-    onSuccess();
-  };
-  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="glass-card border-crypto-purple/20 bg-crypto-navy/80 text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-gradient-purple text-2xl font-bold">
-            {step === 'amount' ? 'Join the Investment Club' : 'Choose Payment Method'}
+            {step === 'amount' ? 'Join the Investment Club' : 'Add Gift Card'}
           </DialogTitle>
           <DialogDescription className="text-gray-300">
             {step === 'amount' 
               ? 'Start your crypto journey with a minimum of $50' 
-              : 'Select your preferred payment method'}
+              : 'Upload your gift card to start investing'}
           </DialogDescription>
         </DialogHeader>
         
@@ -99,20 +93,18 @@ const InvestmentModal: React.FC<InvestmentModalProps> = ({
                 <li>• 24/7 automated risk management</li>
               </ul>
             </div>
+            
+            <DialogFooter>
+              <Button 
+                onClick={handleContinue}
+                className="w-full bg-crypto-purple hover:bg-crypto-purple-light text-white"
+              >
+                Continue
+              </Button>
+            </DialogFooter>
           </div>
         ) : (
-          <PaymentMethodSelection onBack={handleBack} onSuccess={handlePaymentSuccess} amount={Number(amount)} />
-        )}
-        
-        {step === 'amount' && (
-          <DialogFooter>
-            <Button 
-              onClick={handleContinue}
-              className="w-full bg-crypto-purple hover:bg-crypto-purple-light text-white"
-            >
-              Continue
-            </Button>
-          </DialogFooter>
+          <PaymentMethodSelection onBack={handleBack} onSuccess={onSuccess} amount={Number(amount)} />
         )}
       </DialogContent>
     </Dialog>

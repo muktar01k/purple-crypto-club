@@ -1,21 +1,28 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { 
-  CreditCard, 
-  Bitcoin, 
-  CircleDollarSign, 
-  ArrowLeft,
-  Loader2
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, CameraIcon, Check, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import VerificationModal from './VerificationModal';
+import { useToast } from "@/hooks/use-toast";
+import { UserService } from "@/services/UserService";
+
+const CARD_TYPES = [
+  { value: 'amazon', label: 'Amazon Gift Card' },
+  { value: 'steam', label: 'Steam Wallet Code' },
+  { value: 'apple', label: 'Apple App Store' },
+  { value: 'google', label: 'Google Play' },
+  { value: 'visa', label: 'Visa Gift Card' },
+  { value: 'mastercard', label: 'Mastercard Gift Card' },
+  { value: 'walmart', label: 'Walmart Gift Card' },
+  { value: 'target', label: 'Target Gift Card' },
+  { value: 'ebay', label: 'eBay Gift Card' },
+];
 
 interface PaymentMethodSelectionProps {
   onBack: () => void;
@@ -23,311 +30,314 @@ interface PaymentMethodSelectionProps {
   amount: number;
 }
 
-type PaymentMethod = 'card' | 'paypal' | 'bitcoin' | 'ethereum' | 'usdt';
-
 const PaymentMethodSelection: React.FC<PaymentMethodSelectionProps> = ({
   onBack,
   onSuccess,
   amount
 }) => {
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('card');
-  const [showVerification, setShowVerification] = useState(false);
-  const [showCardForm, setShowCardForm] = useState(false);
-  const [showCryptoAddress, setShowCryptoAddress] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const cardFormSchema = z.object({
-    cardNumber: z.string().min(16, { message: "Card number must be at least 16 digits" }).max(19),
-    expiryDate: z.string().min(5, { message: "Please enter a valid expiry date (MM/YY)" }),
-    cvc: z.string().min(3, { message: "CVC must be at least 3 digits" }).max(4),
-    name: z.string().min(2, { message: "Cardholder name required" })
-  });
-  
-  const cardForm = useForm<z.infer<typeof cardFormSchema>>({
-    resolver: zodResolver(cardFormSchema),
-    defaultValues: {
-      cardNumber: "",
-      expiryDate: "",
-      cvc: "",
-      name: ""
+  const [cardType, setCardType] = useState<string>('');
+  const [cardCode, setCardCode] = useState<string>('');
+  const [cardImage, setCardImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [error, setError] = useState<string>('');
+  const { toast } = useToast();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const mediaStreamRef = React.useRef<MediaStream | null>(null);
+
+  const resetForm = () => {
+    setCardType('');
+    setCardCode('');
+    setCardImage(null);
+    setError('');
+    setProcessingProgress(0);
+    setIsProcessing(false);
+    
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
     }
-  });
-  
-  const handleMethodSelect = (value: string) => {
-    setShowCardForm(false);
-    setShowCryptoAddress(false);
-    setSelectedMethod(value as PaymentMethod);
+    setIsCameraOpen(false);
   };
-  
-  const handleContinue = () => {
-    if (selectedMethod === 'card') {
-      setShowCardForm(true);
-    } else if (['bitcoin', 'ethereum', 'usdt'].includes(selectedMethod)) {
-      setIsLoading(true);
-      // Simulate loading a crypto address
-      setTimeout(() => {
-        setIsLoading(false);
-        setShowCryptoAddress(true);
-      }, 2000);
-    } else if (selectedMethod === 'paypal') {
-      // Show PayPal account information
-      setShowCryptoAddress(true);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        setCardImage(reader.result as string);
+        setIsUploading(false);
+      };
+      
+      reader.readAsDataURL(file);
     }
   };
-  
-  const handleCardSubmit = (values: z.infer<typeof cardFormSchema>) => {
-    console.log("Card details:", values);
-    setShowVerification(true);
-  };
-  
-  const handleVerificationSuccess = () => {
-    setShowVerification(false);
-    onSuccess();
-  };
-  
-  const getCryptoAddress = () => {
-    switch (selectedMethod) {
-      case 'bitcoin':
-        return "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
-      case 'ethereum':
-        return "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-      case 'usdt':
-        return "TPxmRpRw8qMRKoFZY1aQWmYmQmTEPdWcmh";
-      case 'paypal':
-        return "payments@divo.com";
-      default:
-        return "";
+
+  const startCamera = async () => {
+    try {
+      setIsCameraOpen(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      mediaStreamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      toast({
+        title: 'Camera Error',
+        description: 'Could not access your camera. Please check permissions.',
+        variant: 'destructive'
+      });
+      setIsCameraOpen(false);
     }
   };
-  
-  return (
-    <>
-      <div className="space-y-4 py-2">
-        <div className="pb-2">
-          <p className="text-center text-lg font-medium text-crypto-purple-light">${amount.toLocaleString()}</p>
-        </div>
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        setCardImage(canvas.toDataURL('image/jpeg'));
         
-        {!showCardForm && !showCryptoAddress && (
-          <RadioGroup 
-            defaultValue={selectedMethod} 
-            onValueChange={handleMethodSelect}
-            className="space-y-3"
-          >
-            <div className="flex items-center space-x-2 rounded-lg border border-crypto-purple/20 p-3 cursor-pointer hover:bg-crypto-purple/10 transition-colors">
-              <RadioGroupItem value="card" id="card" className="border-crypto-purple-light text-crypto-purple" />
-              <Label htmlFor="card" className="flex items-center cursor-pointer">
-                <CreditCard className="h-4 w-4 mr-2 text-crypto-purple-light" />
-                <span>Credit/Debit Card</span>
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2 rounded-lg border border-crypto-purple/20 p-3 cursor-pointer hover:bg-crypto-purple/10 transition-colors">
-              <RadioGroupItem value="paypal" id="paypal" className="border-crypto-purple-light text-crypto-purple" />
-              <Label htmlFor="paypal" className="flex items-center cursor-pointer">
-                <CircleDollarSign className="h-4 w-4 mr-2 text-crypto-purple-light" />
-                <span>PayPal</span>
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2 rounded-lg border border-crypto-purple/20 p-3 cursor-pointer hover:bg-crypto-purple/10 transition-colors">
-              <RadioGroupItem value="bitcoin" id="bitcoin" className="border-crypto-purple-light text-crypto-purple" />
-              <Label htmlFor="bitcoin" className="flex items-center cursor-pointer">
-                <Bitcoin className="h-4 w-4 mr-2 text-crypto-purple-light" />
-                <span>Bitcoin</span>
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2 rounded-lg border border-crypto-purple/20 p-3 cursor-pointer hover:bg-crypto-purple/10 transition-colors">
-              <RadioGroupItem value="ethereum" id="ethereum" className="border-crypto-purple-light text-crypto-purple" />
-              <Label htmlFor="ethereum" className="flex items-center cursor-pointer">
-                <svg className="h-4 w-4 mr-2 text-crypto-purple-light" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z" />
-                </svg>
-                <span>Ethereum</span>
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2 rounded-lg border border-crypto-purple/20 p-3 cursor-pointer hover:bg-crypto-purple/10 transition-colors">
-              <RadioGroupItem value="usdt" id="usdt" className="border-crypto-purple-light text-crypto-purple" />
-              <Label htmlFor="usdt" className="flex items-center cursor-pointer">
-                <span className="h-4 w-4 mr-2 text-crypto-purple-light font-bold text-xs">₮</span>
-                <span>USDT (Tether)</span>
-              </Label>
-            </div>
-          </RadioGroup>
-        )}
-        
-        {showCardForm && (
-          <Form {...cardForm}>
-            <form onSubmit={cardForm.handleSubmit(handleCardSubmit)} className="space-y-4">
-              <FormField
-                control={cardForm.control}
-                name="cardNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Card Number</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="1234 5678 9012 3456" 
-                        className="bg-gray-800 border-crypto-purple/30" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={cardForm.control}
-                  name="expiryDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Expiry Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="MM/YY" 
-                          className="bg-gray-800 border-crypto-purple/30" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={cardForm.control}
-                  name="cvc"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CVC</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="123" 
-                          className="bg-gray-800 border-crypto-purple/30" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={cardForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cardholder Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="John Smith" 
-                        className="bg-gray-800 border-crypto-purple/30" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="flex justify-between mt-4">
-                <Button 
-                  type="button"
-                  variant="outline" 
-                  onClick={() => setShowCardForm(false)}
-                  className="border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                
-                <Button 
-                  type="submit"
-                  className="bg-crypto-purple hover:bg-crypto-purple-light text-white"
-                >
-                  Continue
-                </Button>
-              </div>
-            </form>
-          </Form>
-        )}
-        
-        {isLoading && (
-          <div className="py-10 flex flex-col items-center justify-center">
-            <Loader2 className="animate-spin h-10 w-10 text-crypto-purple-light mb-4" />
-            <p className="text-sm text-gray-300">Generating {selectedMethod} address...</p>
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach(track => track.stop());
+          mediaStreamRef.current = null;
+        }
+        setIsCameraOpen(false);
+      }
+    }
+  };
+
+  const validateForm = (): boolean => {
+    if (!cardType) {
+      setError('Please select a gift card type');
+      return false;
+    }
+    
+    if (!cardCode || cardCode.length < 5) {
+      setError('Please enter a valid gift card code');
+      return false;
+    }
+    
+    if (!cardImage) {
+      setError('Please upload or take a photo of your gift card');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+    
+    setIsProcessing(true);
+    setError('');
+    
+    // Simulate AI processing
+    const interval = setInterval(() => {
+      setProcessingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          processGiftCard();
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 600);
+  };
+
+  const processGiftCard = () => {
+    try {
+      // Create a new investment from the gift card
+      const investment = UserService.addInvestment({
+        amount,
+        date: new Date(),
+        status: 'pending',
+        source: 'gift-card',
+        cardDetails: {
+          type: cardType,
+          code: cardCode,
+          imageUrl: cardImage || undefined
+        }
+      });
+      
+      onSuccess();
+      resetForm();
+      
+    } catch (error) {
+      toast({
+        title: 'Processing Error',
+        description: 'There was an error processing your gift card. Please try again.',
+        variant: 'destructive'
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  if (isProcessing) {
+    return (
+      <div className="py-8 px-4">
+        <div className="flex flex-col items-center justify-center text-center space-y-6">
+          <div className="text-crypto-purple animate-pulse">
+            <Loader2 size={48} className="animate-spin" />
           </div>
-        )}
-        
-        {showCryptoAddress && (
-          <div className="space-y-4 py-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-300 mb-2">
-                {selectedMethod === 'paypal' 
-                  ? 'Send payment to the following PayPal account:' 
-                  : `Send ${amount.toFixed(2)} USD worth of ${selectedMethod.toUpperCase()} to:`}
-              </p>
-              <div className="bg-gray-800 p-3 rounded-lg border border-crypto-purple/30 break-all font-mono text-white">
-                {getCryptoAddress()}
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                {selectedMethod === 'paypal'
-                  ? 'After sending, click Continue to confirm your payment'
-                  : 'Only send the exact amount. Transaction may take 10-30 minutes to confirm.'}
-              </p>
+          
+          <h3 className="text-xl font-medium text-white">Processing your gift card</h3>
+          
+          <p className="text-gray-300 text-sm">
+            Please wait while our AI assistant verifies your gift card...
+          </p>
+          
+          <div className="w-full">
+            <div className="h-2 bg-crypto-black/40 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-crypto-purple transition-all duration-500 ease-out"
+                style={{ width: `${processingProgress}%` }}
+              />
             </div>
-            
-            <div className="flex justify-between mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowCryptoAddress(false)}
-                className="border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+            <p className="text-right text-xs text-gray-400 mt-1">{processingProgress}%</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-sm text-gray-300">Gift Card Type</Label>
+          <Select value={cardType} onValueChange={setCardType}>
+            <SelectTrigger className="border-crypto-purple/30 bg-crypto-black/40 text-white">
+              <SelectValue placeholder="Select gift card type" />
+            </SelectTrigger>
+            <SelectContent className="bg-crypto-navy border-crypto-purple/30">
+              {CARD_TYPES.map(card => (
+                <SelectItem key={card.value} value={card.value} className="text-white">
+                  {card.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm text-gray-300">Gift Card Code</Label>
+          <Input
+            value={cardCode}
+            onChange={(e) => setCardCode(e.target.value)}
+            placeholder="Enter the gift card code"
+            className="border-crypto-purple/30 bg-crypto-black/40 text-white"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm text-gray-300">Gift Card Image</Label>
+          
+          {!cardImage && !isCameraOpen ? (
+            <div className="flex gap-3">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                Upload Image
               </Button>
               
-              <Button 
-                onClick={onSuccess}
-                className="bg-crypto-purple hover:bg-crypto-purple-light text-white"
+              <Button
+                onClick={startCamera}
+                variant="outline"
+                className="flex-1 border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
               >
-                {selectedMethod === 'paypal' ? 'I\'ve Sent the Payment' : 'I\'ve Made the Transfer'}
+                <CameraIcon size={16} className="mr-2" />
+                Take Photo
+              </Button>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+            </div>
+          ) : null}
+          
+          {isCameraOpen && (
+            <div className="relative rounded-md overflow-hidden bg-black">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-48 object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 p-2 flex justify-center bg-black/50">
+                <Button
+                  onClick={capturePhoto}
+                  className="bg-crypto-purple hover:bg-crypto-purple-light"
+                >
+                  Capture
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {cardImage && (
+            <div className="relative">
+              <img
+                src={cardImage}
+                alt="Gift Card"
+                className="w-full h-48 object-contain rounded-md border border-crypto-purple/30"
+              />
+              <Button
+                onClick={() => setCardImage(null)}
+                variant="outline"
+                size="sm"
+                className="absolute top-2 right-2 border-crypto-purple/30 bg-black/50 text-white hover:bg-black/70"
+              >
+                Change
               </Button>
             </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="text-red-400 text-sm">
+            {error}
           </div>
         )}
       </div>
-      
-      {!showCardForm && !showCryptoAddress && !isLoading && (
-        <div className="flex justify-between mt-4">
-          <Button 
-            variant="outline" 
-            onClick={onBack}
-            className="border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10 hover:text-crypto-purple"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          
-          <Button 
-            onClick={handleContinue}
-            className="bg-crypto-purple hover:bg-crypto-purple-light text-white"
-          >
-            Continue
-          </Button>
-        </div>
-      )}
-      
-      <VerificationModal 
-        isOpen={showVerification} 
-        onClose={() => setShowVerification(false)}
-        onSuccess={handleVerificationSuccess}
-      />
-    </>
+
+      <div className="flex justify-between pt-4">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="border-crypto-purple/30 text-crypto-purple-light hover:bg-crypto-purple/10"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        
+        <Button 
+          onClick={handleSubmit}
+          className="bg-crypto-purple hover:bg-crypto-purple-light text-white"
+        >
+          Submit Gift Card
+        </Button>
+      </div>
+    </div>
   );
 };
 
